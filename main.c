@@ -1,26 +1,25 @@
 /*
-A ////(true)
-{
+Attempt the rewrite the main py program in C
+*/
 
-} //////n// int//int f;;///oat;/;///f// float t t  //nt int Calculate; the distance between the 3 pairs of point.
-A = ;
-distance.euclidean(eye[1], eye[5])
-	B = distance.euclidean(eye[2], eye[4])
-			C = distance.euclidean(eye[0], eye[3])
-#Find the EAR and return to function caller
-					return ((A + B) / (2.0 * C)) loat eye_aspect_ratio(int *eye){
+// from scipy.spatial import distance
+// from imutils import face_utils
+// import imutils
+// import dlib
+// import cv2
 
-					} /
-				^Include all the libs above
+// ^ Include all the libs above
+#include "cv2"
 
-				// // #include "cv2"
-				/*
-//ttemp
-t the rewrite the main py program in C
-// */
-				/
-				//
-				//
+// Define the function for calculating eye aspect ratio with eucilidean distance
+def eye_aspect_ratio(eye):
+    // Calculate the distance between the 3 pairs of point.
+    A = distance.euclidean(eye[1], eye[5])
+    B = distance.euclidean(eye[2], eye[4])
+    C = distance.euclidean(eye[0], eye[3])
+    // Find the EAR and return to function caller
+    return ((A + B) / (2.0 * C))
+
 float eye_aspect_ratio(int *eye) {
 	// Calculate the distance between the 3 pairs of point.
     float A = distance.euclidean(eye[1], eye[5])
@@ -96,7 +95,7 @@ while (true) {
     key = cv2.waitKey(1) & 0xFF
     if key == ord("q"):
         break
+	
 }
-
 cv2.destroyAllWindows()
 cap.stop() // Might not be needed, but still used to kill the process to stop the stream
