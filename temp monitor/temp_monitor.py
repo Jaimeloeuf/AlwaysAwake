@@ -17,7 +17,6 @@ loop = setInterval(time, temp)
 
 # Infinite loop that runs to read user input
 while True:
-    # global loop
     try:
         option = input()
         if option == 'k':
@@ -27,6 +26,8 @@ while True:
         else:
             print('Invalid option entered')
     except:
+        # Try to stop the loop by calling this method?
+        loop.stop()
         exit(0)
         
 
@@ -38,4 +39,9 @@ User can press the keys:
     k: to speed up by 0.25 seconds
     m: to slow down by 0.25 seconds
 
+
+Todo:
+    Add a method to auto stop the interval / loop when there is a keyboard interrupt
+    Implement the NCurses lib or smth similiar for reading the input
+    Add the function that will create a new loop on time change.
 """
