@@ -15,8 +15,6 @@ def eye_aspect_ratio(eye):
 
 
 thresh = 0.22 # Threshold value for the Eye Aspect Ratio.
-blink = 2 # Number of frames where EAR is below threshold before counted as a blink
-frame_check = 3 # Number of frames where EAR is below threshold before counted as falling asleep
 count = 0 # Global variable used to keep track of the consecutive number of times the 'EAR' is below threshold
 
 # Get a function from dlib to be used to detect faces, or 'subjects'
@@ -28,8 +26,34 @@ predict_data = dlib.shape_predictor(r"C:\Users\user\Documents\Projects\Drowsines
 (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_68_IDXS["left_eye"]
 (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_68_IDXS["right_eye"]
 
-# Start the video stream capture process with openCV 2
+# Start the video stream capture process with openCV 2. Open the camera by Index 0
 cap = cv2.VideoCapture(0)
+
+
+""" Optimization notes
+
+    - Use different processes
+    - See how to stop the video streaming bottle neck
+    - See if not rescaling the frame would be faster
+    - See if removing the shape drawing it would be faster
+    - Changing the ML algorithm to a faster one
+    - Only use the nearest "subject"'s eyes and discard the rest
+    - Remove the text writings on the screen and use a buzzer/LED on the GPIO instead
+    - In the headless version, stop displaying/drawing the frame captured out onto the screen and save GPU usage
+      by just ouputting alerts through the GPIO
+    - Remove the key that stops the loop to check if user pressed q.
+
+    - Last resort is to rewrite this in another language
+    - Remove unneeded modules in the kernel / stopping unneeded services/apps running in the background
+
+"""
+
+
+
+# Infinite loop to read frames from the video output and put into a queue
+while True:
+    # Read and store the newly captured image
+    ret, frame = cap.read()
 
 while True:
     # Read and store the newly captured image
@@ -60,24 +84,24 @@ while True:
         cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
         cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
 
-        print("EAR: ", ear)
+        print(f"EAR: {ear}")
         if ear < thresh:
-            print("EAR Below threshold ", ear)
             count += 1
-            print(count)
-            if count >= blink:
-                print("---------------Blinked!---------------")
-            if count >= frame_check:
+            # Number of frames where EAR is below threshold before counted as falling asleep
+            if count >= 3:
                 # Alert the user by putting text onto the frame directly.
                 cv2.putText(frame, "**********************ALERT!**********************", (20, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                 cv2.putText(frame, "**********************ALERT!**********************", (20, 460),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                # Alert the user by sounding the alarm.
+                # Pass the event via the data
+                # alarm()
         else:
             count = 0 # Reset the count
     cv2.imshow("Frame", frame)
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord("q"):
+
+    if (cv2.waitKey(1) & 0xFF) == ord("q"):
         break
+
 cv2.destroyAllWindows()
-cap.stop() # Might not be needed, but still used to kill the process to stop the stream
