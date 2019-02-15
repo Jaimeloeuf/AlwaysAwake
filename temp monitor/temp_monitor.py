@@ -1,36 +1,8 @@
+import signal
 import os
-from asyncio import sleep
+from gpiozero import CPUTemperature
 from JSutils import setInterval
-
-# Global variable to save the delay time.
-time = 4
-
-def temp():
-    # temp = os.popen("vcgencmd measure_temp").readline()
-    # print(temp)
-    # print(temp.replace("temp=", ""))
-    print('30C') # Testing
-
-# Create a loop that constantly prints the temperature.
-loop = setInterval(time, temp)
-
-
-# Infinite loop that runs to read user input
-while True:
-    try:
-        option = input()
-        if option == 'k':
-            time = time + 0.25
-        elif option == 'm':
-            time = time - 0.25
-        else:
-            print('Invalid option entered')
-    except:
-        # Try to stop the loop by calling this method?
-        loop.stop()
-        exit(0)
-        
-
+from Jevents import Watch
 
 
 """
@@ -41,7 +13,60 @@ User can press the keys:
 
 
 Todo:
-    Add a method to auto stop the interval / loop when there is a keyboard interrupt
+    Maybe run the read temperature and keyboard capture in seperate processes in order to keep
+    main process clean and neat.
     Implement the NCurses lib or smth similiar for reading the input
-    Add the function that will create a new loop on time change.
 """
+
+
+# Global variable to save the delay time.
+time = Watch(4)
+time.on_change += restart_loop
+
+
+def read_temp():
+    # temp = os.popen("vcgencmd measure_temp").readline()
+    # print(temp)
+    # print(temp.replace("temp=", ""))
+    print('30C')  # Testing
+
+    # Below is the RPi GPIOZERO's implementation of reading CPU temp values
+    cpu = CPUTemperature()
+    cpu.temperature
+
+
+# Global variable holding the reference to the loop that constantly reads and prints the temperature.
+loop = setInterval(time, read_temp)
+
+
+def restart_loop(new_time):
+    # Reference and use the global variable loop inside this scope block
+    global loop
+    # Stop the loop first
+    loop.stop(True)
+    # Assign a new loop with the new time
+    loop = setInterval(new_time, read_temp)
+
+
+# Infinite loop that runs to read user input
+while True:
+    """ How to read keyboard input and not print to screen """
+    option = input()
+    if option == 'k':
+        time = time + 0.25
+    elif option == 'm':
+        time = time - 0.25
+    else:
+        print('Invalid option entered')
+
+
+# Interrupt Signal handler
+def signal_handler(signal, frame):
+    print("Program interrupted!")
+    # Stop the loop temperature reading loop on keyboard interrupt
+    loop.stop()
+    exit(0)
+
+
+# Pass in the signal_handler to run when the INTerrupt signal is received
+signal.signal(signal.SIGINT, signal_handler)

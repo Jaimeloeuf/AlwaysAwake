@@ -13,7 +13,6 @@ Type=idle
 ExecStart=/usr/bin/python /home/pi/Documents/Drow
 # Make the system always restart the service when stopped for whatever reasons
 Restart=always
-# This is a comment
 
 [Install]
 # Alternative name used to start the service
