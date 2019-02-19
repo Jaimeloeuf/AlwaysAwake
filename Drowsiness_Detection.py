@@ -33,6 +33,7 @@ predict_data = dlib.shape_predictor(
 cap = cv2.VideoCapture(0)
 
 
+
 """ Optimization notes
 
     - Use different processes
@@ -51,6 +52,10 @@ cap = cv2.VideoCapture(0)
 
 """
 
+gray_queue = mp.Queue()
+frame_queue = mp.Queue()
+
+
 # Function to run in child process that deals with just reading the face and not predicting
 def get_face(queue):
     while True:
@@ -66,41 +71,25 @@ def get_face(queue):
             # if face detected, put the face into the pipe
             subject = subjects[0]
             queue.put(subject)
+
+            gray_queue.put(gray)
+            frame_queue.put(frame)
         except:
             # Notify user that face not detected
             continue
-
-
-def main():
-    # Read the pipe, do the below only if image avail in the pipe
-
-    # Use the 'spawn' method to start a new Process
-    mp.set_start_method('spawn')
-    # Create a new Queue object
-    queue = mp.Queue()
-    p = mp.Process(target=get_face, args=(queue,))
-    p.start()
-
-
-    prediction_func_p = mp.Process(target=prediction_func, args=(queue,))
-    prediction_func_p.start()
-
-    
-    print('All funcs called')
-    p.join()
-
-
 
 def prediction_func(queue):
     quit_flag = False
 
     # Infinite loop to read frames from the video output and put into a queue
     while True:
+
+        # Read the pipe, do the below only if image avail in the pipe
         while not queue.empty():
 
-            print('In da pred loop')
+            # print('In da pred loop')
 
-            shape = predict_data(gray, queue.get())
+            shape = predict_data(gray_queue.get(), queue.get())
             # Convert the shape data to a NumPy Array
             shape = face_utils.shape_to_np(shape)
             leftEye = shape[lStart:lEnd]
@@ -112,6 +101,9 @@ def prediction_func(queue):
             # Create the contours out before drawing them.
             leftEyeHull = cv2.convexHull(leftEye)
             rightEyeHull = cv2.convexHull(rightEye)
+
+            frame = frame_queue.get()
+
             # To draw out the contours around the eyes
             cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
             cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
@@ -139,12 +131,34 @@ def prediction_func(queue):
                 # Set a quit flag
                 quit_flag = True
                 break
-                
+
         if quit_flag == True:
             break
                 
     queue.close()
+    gray_queue.close()
+    frame_queue.close()
     cv2.destroyAllWindows()
+
+
+
+
+def main():
+    # Use the 'spawn' method to start a new Process
+    mp.set_start_method('spawn')
+    # Create a new Queue object
+    queue = mp.Queue()
+    p = mp.Process(target=get_face, args=(queue,))
+    p.start()
+
+
+    prediction_func_p = mp.Process(target=prediction_func, args=(queue,))
+    prediction_func_p.start()
+
+    
+    print('All funcs called')
+    p.join()
+
 
 
 if __name__ == "__main__":
