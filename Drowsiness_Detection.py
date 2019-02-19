@@ -4,9 +4,9 @@ import imutils
 import dlib
 import cv2
 
+import multiprocessing as mp
+
 # Define the function for calculating eye aspect ratio with eucilidean distance
-
-
 def eye_aspect_ratio(eye):
     # Calculate the distance between the 3 pairs of point.
     A = distance.euclidean(eye[1], eye[5])
@@ -52,68 +52,103 @@ cap = cv2.VideoCapture(0)
 """
 
 # Function to run in child process that deals with just reading the face and not predicting
-def get_face():
-    # Read and store the newly captured image
-    ret, frame = cap.read()
-    # Redraw the frame if neccessary to capture less data which means less processing power needed.
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Detect faces, after applying the filter for color recognition
-    subjects = detect(gray, 0)
+def get_face(queue):
+    while True:
+        # Read and store the newly captured image
+        ret, frame = cap.read()
+        # Redraw the frame if neccessary to capture less data which means less processing power needed.
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Detect faces, after applying the filter for color recognition
+        subjects = detect(gray, 0)
 
-    try:
-        # Try to get the 'first face' out, the closet face to the camera
-        # if face detected, put the face into the pipe
-        subject = subjects[0]
-    except:
-        # Notify user that face not detected
-        continue
+        try:
+            # Try to get the 'first face' out, the closet face to the camera
+            # if face detected, put the face into the pipe
+            subject = subjects[0]
+            queue.put(subject)
+        except:
+            # Notify user that face not detected
+            continue
 
 
-
-# Infinite loop to read frames from the video output and put into a queue
-while True:
+def main():
     # Read the pipe, do the below only if image avail in the pipe
 
-    shape = predict_data(gray, subject)
-    # Convert the shape data to a NumPy Array
-    shape = face_utils.shape_to_np(shape)
-    leftEye = shape[lStart:lEnd]
-    rightEye = shape[rStart:rEnd]
-
-    ear = (eye_aspect_ratio(leftEye) + eye_aspect_ratio(rightEye)) / 2.0
-
+    # Use the 'spawn' method to start a new Process
+    mp.set_start_method('spawn')
+    # Create a new Queue object
+    queue = mp.Queue()
+    p = mp.Process(target=get_face, args=(queue,))
+    p.start()
 
 
-    # Draw on the frame so that the user can see the eye tracking in real time.
-    # Create the contours out before drawing them.
-    leftEyeHull = cv2.convexHull(leftEye)
-    rightEyeHull = cv2.convexHull(rightEye)
-    # To draw out the contours around the eyes
-    cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
-    cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
+    prediction_func_p = mp.Process(target=prediction_func, args=(queue,))
+    prediction_func_p.start()
 
-    print(f"EAR: {ear}")
-    if ear < thresh:
-        count += 1
-        # Number of frames where EAR is below threshold before counted as falling asleep
-        if count >= 3:
-            # Alert the user by putting text onto the frame directly.
-            cv2.putText(frame, "**********************ALERT!**********************", (20, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            cv2.putText(frame, "**********************ALERT!**********************", (20, 460),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            # Alert the user by sounding the alarm.
-            # Pass the event via the data
-            # alarm()
-    else:
-        count = 0  # Reset the count
+    
+    print('All funcs called')
+    p.join()
 
-    cv2.imshow("Frame", frame)
 
-    if (cv2.waitKey(1) & 0xFF) == ord("q"):
-        break
 
-cv2.destroyAllWindows()
+def prediction_func(queue):
+    quit_flag = False
+
+    # Infinite loop to read frames from the video output and put into a queue
+    while True:
+        while not queue.empty():
+
+            print('In da pred loop')
+
+            shape = predict_data(gray, queue.get())
+            # Convert the shape data to a NumPy Array
+            shape = face_utils.shape_to_np(shape)
+            leftEye = shape[lStart:lEnd]
+            rightEye = shape[rStart:rEnd]
+
+            ear = (eye_aspect_ratio(leftEye) + eye_aspect_ratio(rightEye)) / 2.0
+
+            # Draw on the frame so that the user can see the eye tracking in real time.
+            # Create the contours out before drawing them.
+            leftEyeHull = cv2.convexHull(leftEye)
+            rightEyeHull = cv2.convexHull(rightEye)
+            # To draw out the contours around the eyes
+            cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
+            cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
+
+            print(f"EAR: {ear}")
+            if ear < thresh:
+                count += 1
+                # Number of frames where EAR is below threshold before counted as falling asleep
+                if count >= 3:
+                    # Alert the user by putting text onto the frame directly.
+                    cv2.putText(frame, "**********************ALERT!**********************", (20, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(frame, "**********************ALERT!**********************", (20, 460),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    # Alert the user by sounding the alarm.
+                    # Pass the event via the data
+                    # alarm()
+            else:
+                count = 0  # Reset the count
+
+            # Read the frame from the Queue to display
+            cv2.imshow("Frame", frame)
+
+            if (cv2.waitKey(1) & 0xFF) == ord("q"):
+                # Set a quit flag
+                quit_flag = True
+                break
+                
+        if quit_flag == True:
+            break
+                
+    queue.close()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
 
 
 
