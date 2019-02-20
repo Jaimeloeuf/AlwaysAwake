@@ -16,9 +16,6 @@ def eye_aspect_ratio(eye):
     return ((A + B) / (2.0 * C))
 
 
-thresh = 0.22  # Threshold value for the Eye Aspect Ratio.
-count = 0  # Global variable used to keep track of the consecutive number of times the 'EAR' is below threshold
-
 # Get a function from dlib to be used to detect faces, or 'subjects'
 detect = dlib.get_frontal_face_detector()
 # Get the .dat file that stores the prediction model used by dlib, and pass it into the function to get a model out.
@@ -53,12 +50,8 @@ cap = cv2.VideoCapture(0)
 
 """
 
-gray_queue = mp.Queue()
-frame_queue = mp.Queue()
-
-
 # Function to run in child process that deals with just reading the face and not predicting
-def get_face(queue):
+def get_face(queue, gray_queue, frame_queue):
     while True:
         # Read and store the newly captured image
         ret, frame = cap.read()
@@ -79,16 +72,18 @@ def get_face(queue):
             # Notify user that face not detected
             continue
 
-def prediction_func(queue):
+def prediction_func(queue, gray_queue, frame_queue):
     quit_flag = False
+    thresh = 0.22  # Threshold value for the Eye Aspect Ratio.
+    count = 0  # Variable used to keep track of the consecutive number of times the 'EAR' is below threshold
 
     # Infinite loop to read frames from the video output and put into a queue
-    while True:
+
+    # Loop till user press q to set the quit_flag in order to quit the program
+    while not quit_flag:
 
         # Read the pipe, do the below only if image avail in the pipe
         while not queue.empty():
-
-            # print('In da pred loop')
 
             shape = predict_data(gray_queue.get(), queue.get())
             # Convert the shape data to a NumPy Array
@@ -133,32 +128,57 @@ def prediction_func(queue):
                 quit_flag = True
                 break
 
-        if quit_flag == True:
-            break
-                
-    queue.close()
-    gray_queue.close()
-    frame_queue.close()
-    cv2.destroyAllWindows()
-
-
-
 
 def main():
     # Use the 'spawn' method to start a new Process
     mp.set_start_method('spawn')
-    # Create a new Queue object
+    
+    # Create the Queue objects
     queue = mp.Queue()
-    p = mp.Process(target=get_face, args=(queue,))
+
+    gray_queue = mp.Queue()
+    frame_queue = mp.Queue()
+
+    # Spawn a new Process to get the face of the user.
+    p = mp.Process(target=get_face, args=(queue, gray_queue, frame_queue,))
+    # Start the Process immediately
     p.start()
 
-
-    prediction_func_p = mp.Process(target=prediction_func, args=(queue,))
+    # Spawn a new Process to do the prediction and detection of the User's eyes
+    prediction_func_p = mp.Process(target=prediction_func, args=(queue, gray_queue, frame_queue,))
     prediction_func_p.start()
 
+    import signal
+    def signal_handler(signal, frame):
+        print("Program interrupted!")
+        # Close the camera and the display window
+        cv2.destroyAllWindows()
+
+        # Close and destroy all the Queues
+        queue.close()
+        gray_queue.close()
+        frame_queue.close()
+        
+        exit(0)
+
+    # Pass in the signal_handler to run when the INTerrupt signal is received
+    signal.signal(signal.SIGINT, signal_handler)
+
+
+    prediction_func_p.join()
+
     
-    print('All funcs called')
-    p.join()
+    print('Q is pressed to kill')
+    # Note that the above is called but nothing happens, the "async callback is terminated"
+    
+    cv2.destroyAllWindows()
+    print('Window is destroyed')
+
+    queue.close()
+    gray_queue.close()
+    frame_queue.close()
+
+    print('All the queues are closed')
 
 
 
