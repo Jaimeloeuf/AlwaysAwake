@@ -31,25 +31,6 @@ predict_data = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
 cap = cv2.VideoCapture(0)
 
 
-
-""" Optimization notes
-
-    - Use different processes
-    - See how to stop the video streaming bottle neck
-    - See if not rescaling the frame would be faster
-    - See if removing the shape drawing it would be faster
-    - Changing the ML algorithm to a faster one
-    - Only use the nearest "subject"'s eyes and discard the rest
-    - Remove the text writings on the screen and use a buzzer/LED on the GPIO instead
-    - In the headless version, stop displaying/drawing the frame captured out onto the screen and save GPU usage
-      by just ouputting alerts through the GPIO
-    - Remove the key that stops the loop to check if user pressed q.
-
-    - Last resort is to rewrite this in another language
-    - Remove unneeded modules in the kernel / stopping unneeded services/apps running in the background
-
-"""
-
 # Function to run in child process that deals with just reading the face and not predicting
 def get_face(queue, gray_queue, frame_queue):
     while True:
@@ -61,16 +42,20 @@ def get_face(queue, gray_queue, frame_queue):
         subjects = detect(gray, 0)
 
         try:
-            # Try to get the 'first face' out, the closet face to the camera
-            # if face detected, put the face into the pipe
+            # Try to get the first/closest face out
             subject = subjects[0]
+            # if face detected, meaning that index 0 holds a valid value, then put face into the Queue
             queue.put(subject)
-
+            # Put the grayscale image and the frame into their Respective Queues too
             gray_queue.put(gray)
             frame_queue.put(frame)
         except:
-            # Notify user that face not detected
+            # Should I still pass in a frame or grayscale into the pipe for the user to see?
+            frame_queue.put(frame)
+
+            # If index 0 is null, meaning no face is detected, skip this loop and read another frame
             continue
+
 
 def prediction_func(queue, gray_queue, frame_queue):
     quit_flag = False
@@ -81,6 +66,9 @@ def prediction_func(queue, gray_queue, frame_queue):
 
     # Loop till user press q to set the quit_flag in order to quit the program
     while not quit_flag:
+
+        print('No subject found in da frame')
+        print(frame_queue.qsize())
 
         # Read the pipe, do the below only if image avail in the pipe
         while not queue.empty():
@@ -123,10 +111,27 @@ def prediction_func(queue, gray_queue, frame_queue):
             # Read the frame from the Queue to display
             cv2.imshow("Frame", frame)
 
-            if (cv2.waitKey(1) & 0xFF) == ord("q"):
-                # Set a quit flag
+            # if (cv2.waitKey(1) & 0xFF) == ord("q"):
+            #     # Set a quit flag
+            #     quit_flag = True
+            #     break
+            if not waitKey():
                 quit_flag = True
                 break
+
+        # Read the frame from the Queue to display
+        cv2.imshow("Frame", frame_queue.get())
+
+        if not waitKey():
+            break
+
+
+
+def waitKey(time =1):
+    if (cv2.waitKey(time) & 0xFF) == ord("q"):
+        # Set a quit flag
+        quit_flag = True
+        return False
 
 
 def main():
@@ -158,15 +163,14 @@ def main():
         queue.close()
         gray_queue.close()
         frame_queue.close()
-        
         exit(0)
 
     # Pass in the signal_handler to run when the INTerrupt signal is received
     signal.signal(signal.SIGINT, signal_handler)
 
 
+    # Wait for the predicition process to end on Key Press
     prediction_func_p.join()
-
     
     print('Q is pressed to kill')
     # Note that the above is called but nothing happens, the "async callback is terminated"

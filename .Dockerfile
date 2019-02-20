@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Using shell form of ENTRYPOINT commmand to make sure nothing can override this
+ENTRYPOINT python3 /usr/src/AlwaysAwake
+
 CMD [ "python", "./your-daemon-or-script.py" ]
 
 
