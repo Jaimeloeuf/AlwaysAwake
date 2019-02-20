@@ -32,7 +32,7 @@ cap = cv2.VideoCapture(0)
 
 
 # Function to run in child process that deals with just reading the face and not predicting
-def get_face(queue, gray_queue, frame_queue):
+def get_face(face_queue, gray_queue, frame_queue):
     while True:
         # Read and store the newly captured image
         ret, frame = cap.read()
@@ -45,7 +45,7 @@ def get_face(queue, gray_queue, frame_queue):
             # Try to get the first/closest face out
             subject = subjects[0]
             # if face detected, meaning that index 0 holds a valid value, then put face into the Queue
-            queue.put(subject)
+            face_queue.put(subject)
             # Put the grayscale image and the frame into their Respective Queues too
             gray_queue.put(gray)
             frame_queue.put(frame)
@@ -57,7 +57,7 @@ def get_face(queue, gray_queue, frame_queue):
             continue
 
 
-def prediction_func(queue, gray_queue, frame_queue):
+def prediction_func(face_queue, gray_queue, frame_queue):
     quit_flag = False
     thresh = 0.22  # Threshold value for the Eye Aspect Ratio.
     count = 0  # Variable used to keep track of the consecutive number of times the 'EAR' is below threshold
@@ -66,14 +66,10 @@ def prediction_func(queue, gray_queue, frame_queue):
 
     # Loop till user press q to set the quit_flag in order to quit the program
     while not quit_flag:
-
-        print('No subject found in da frame')
-        print(frame_queue.qsize())
-
         # Read the pipe, do the below only if image avail in the pipe
-        while not queue.empty():
+        while not face_queue.empty():
 
-            shape = predict_data(gray_queue.get(), queue.get())
+            shape = predict_data(gray_queue.get(), face_queue.get())
             # Convert the shape data to a NumPy Array
             shape = face_utils.shape_to_np(shape)
             leftEye = shape[lStart:lEnd]
@@ -111,27 +107,17 @@ def prediction_func(queue, gray_queue, frame_queue):
             # Read the frame from the Queue to display
             cv2.imshow("Frame", frame)
 
-            # if (cv2.waitKey(1) & 0xFF) == ord("q"):
-            #     # Set a quit flag
-            #     quit_flag = True
-            #     break
-            if not waitKey():
+            if (cv2.waitKey(1) & 0xFF) == ord("q"):
+                # Set a quit flag
                 quit_flag = True
                 break
 
-        # Read the frame from the Queue to display
+        # Even if there is no face detected, the frame should still be read and displayed
         cv2.imshow("Frame", frame_queue.get())
 
-        if not waitKey():
+        if (cv2.waitKey(1) & 0xFF) == ord("q"):
+            # Break the loop if user pressed 'q' when no subjects are detected
             break
-
-
-
-def waitKey(time =1):
-    if (cv2.waitKey(time) & 0xFF) == ord("q"):
-        # Set a quit flag
-        quit_flag = True
-        return False
 
 
 def main():
@@ -139,18 +125,18 @@ def main():
     mp.set_start_method('spawn')
     
     # Create the Queue objects
-    queue = mp.Queue()
+    face_queue = mp.Queue()
 
     gray_queue = mp.Queue()
     frame_queue = mp.Queue()
 
     # Spawn a new Process to get the face of the user.
-    p = mp.Process(target=get_face, args=(queue, gray_queue, frame_queue,))
+    p = mp.Process(target=get_face, args=(face_queue, gray_queue, frame_queue,))
     # Start the Process immediately
     p.start()
 
     # Spawn a new Process to do the prediction and detection of the User's eyes
-    prediction_func_p = mp.Process(target=prediction_func, args=(queue, gray_queue, frame_queue,))
+    prediction_func_p = mp.Process(target=prediction_func, args=(face_queue, gray_queue, frame_queue,))
     prediction_func_p.start()
 
     import signal
@@ -160,7 +146,7 @@ def main():
         cv2.destroyAllWindows()
 
         # Close and destroy all the Queues
-        queue.close()
+        face_queue.close()
         gray_queue.close()
         frame_queue.close()
         exit(0)
@@ -178,7 +164,7 @@ def main():
     cv2.destroyAllWindows()
     print('Window is destroyed')
 
-    queue.close()
+    face_queue.close()
     gray_queue.close()
     frame_queue.close()
 

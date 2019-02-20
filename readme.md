@@ -25,24 +25,25 @@ Currently working on creating a docker image for this program to deal with the n
 ### Algorithm
 Each eye is represented by 6 (x, y)-coordinates, starting at the left-corner of the eye (as if you were looking at the person), and then working clockwise around the eye:.
 
-<img src="https://github.com/akshaybahadur21/Drowsiness_Detection/blob/master/eye1.jpg">
+<img src="readme_resources/eye1.jpg">
 
 
 ### Condition
 It checks 20 consecutive frames and if the Eye Aspect ratio is lesst than 0.25, Alert is generated.
 
 
-#### Relationship
-<img src="https://github.com/akshaybahadur21/Drowsiness_Detection/blob/master/eye2.png">
+#### Formula for Eye Aspect Ratio
+<img src="readme_resources/eye2.png">
 
 
-#### Summing up
-<img src="https://github.com/akshaybahadur21/Drowsiness_Detection/blob/master/eye3.jpg">
+#### Usage graph
+<img src="readme_resources/eye3.jpg">
+
 View article referenced for this project [here](https://www.pyimagesearch.com/2017/05/08/drowsiness-detection-opencv/)
 
 
 ### Execution
-To run the code
+To run the code, assuming python refers to python3
 ```
-python Drowsiness_Detection.py
+python main.py
 ```
