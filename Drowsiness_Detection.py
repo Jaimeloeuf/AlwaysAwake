@@ -22,8 +22,9 @@ count = 0  # Global variable used to keep track of the consecutive number of tim
 # Get a function from dlib to be used to detect faces, or 'subjects'
 detect = dlib.get_frontal_face_detector()
 # Get the .dat file that stores the prediction model used by dlib, and pass it into the function to get a model out.
-predict_data = dlib.shape_predictor(
-    r"C:\Users\user\Documents\Projects\Drowsiness_Detection\shape_predictor_68_face_landmarks.dat")
+# Use relative location for the shape predictor file instead of abs. path for consistency across different filesystems.
+# Should I use the os.path to get current PWD in order to get the address or just do relative import?
+predict_data = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
 
 # Give names to the detected features, 'eyes'
 (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_68_IDXS["left_eye"]
