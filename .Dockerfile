@@ -1,3 +1,5 @@
+# Checkout what is the base image that python is built on
+# Also checkout the platform aavail for this image, like can this image be ran on the ARM platform?
 # Use the newest version of python
 FROM python:latest
 
@@ -7,6 +9,9 @@ WORKDIR . /usr/src/app
 COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install the required software with the package manager
+RUN sudo apt-get install -yqq opencv
 
 COPY . .
 
