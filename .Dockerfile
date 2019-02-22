@@ -1,7 +1,7 @@
 # Checkout what is the base image that python is built on
 # Also checkout the platform aavail for this image, like can this image be ran on the ARM platform?
 # Use the newest version of python
-FROM python:latest
+FROM python:3
 
 # Copy contents from this directory over into the volume inside the container
 WORKDIR . /usr/src/app

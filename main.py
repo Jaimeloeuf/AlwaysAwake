@@ -72,7 +72,16 @@ def prediction_func(face_queue, gray_queue, frame_queue):
         # Read the pipe, do the below only if image avail in the pipe
         while not face_queue.empty():
 
-            shape = predict_data(gray_queue.get(), face_queue.get())
+            # Get the last face in the face queue
+            face = face_queue.get()
+            while face_queue.qsize():
+                face = face_queue.get()
+
+            gray = gray_queue.get()
+            while gray_queue.qsize():
+                gray = gray_queue.get()
+
+            shape = predict_data(gray, face)
             # Convert the shape data to a NumPy Array
             shape = face_utils.shape_to_np(shape)
             leftEye = shape[lStart:lEnd]
@@ -86,6 +95,8 @@ def prediction_func(face_queue, gray_queue, frame_queue):
             rightEyeHull = cv2.convexHull(rightEye)
 
             frame = frame_queue.get()
+            while frame_queue.qsize():
+                frame = frame_queue.get()
 
             # To draw out the contours around the eyes
             cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
